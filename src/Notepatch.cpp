@@ -1,4 +1,4 @@
-ï»¿#include <windows.h>
+#include <windows.h>
 #include <shlwapi.h>
 #include <VersionHelpers.h>
 
@@ -39,6 +39,7 @@ BOOL			g_bShowStatusbar = TRUE;
 BOOL			g_bFullscreen = FALSE;
 BOOL			g_bAlwaysOnTop = FALSE;
 BOOL			g_bTransparentMode = FALSE;
+int				g_iFontSizeZoom = 0;
 BOOL			g_bModified = FALSE;
 BOOL			g_bWordWrap = FALSE;
 BOOL			g_bShowLinenumbers = FALSE;
@@ -557,13 +558,27 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, LPWSTR lpCmdLine, 
 		g_pEdit->SetDark(TRUE);
 
 	StatusBarUpdateCaret(0, 0);
-	StatusBarUpdateZoom(100);
+	StatusBarUpdateZoom(g_iFontSizeZoom ? g_pEdit->SetZoom(g_iFontSizeZoom) : 100);
 	StatusBarUpdateIndentType(g_iIndentType);
 
 	// Hook for finding and adjusting dialogs
 	g_hDetectDialogsHook = SetWindowsHookEx(WH_CALLWNDPROCRET, (HOOKPROC)DialogHookProc, 0, GetCurrentThreadId());
 
 	SetFocus(g_pEdit->m_hWnd);
+
+	// Restore transparent mode and always-on-top from saved settings
+	if (g_bTransparentMode)
+	{
+		long exstyle = GetWindowLong(g_hWndMain, GWL_EXSTYLE);
+		SetWindowLong(g_hWndMain, GWL_EXSTYLE, exstyle | WS_EX_LAYERED);
+		SetLayeredWindowAttributes(g_hWndMain, 0, 200, LWA_ALPHA);
+		CheckMenuItem(g_hMenuMain, IDM_VIEW_TRANSPARENT, MF_BYCOMMAND | MF_CHECKED);
+	}
+	if (g_bAlwaysOnTop)
+	{
+		SetWindowPos(g_hWndMain, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE|SWP_NOSIZE);
+		CheckMenuItem(g_hMenuMain, IDM_VIEW_ALWAYSONTOP, MF_BYCOMMAND | MF_CHECKED);
+	}
 
 	ShowWindow(g_hWndMain, SW_SHOWNORMAL);
 
@@ -1289,7 +1304,7 @@ LRESULT OnCommand(HWND hwnd, WPARAM wParam, LPARAM lParam)
 				g_hWndMain,
 				VERSION_FILEVERSION_LONG L"\n"
 				VERSION_LEGALCOPYRIGHT_LONG L"\n\n"
-				L"Windows è®°äº‹æœ¬å¢žå¼ºå…‹éš†ï¼šä¸­æ–‡æ±‰åŒ– + å¿«æ·é”®å¢žå¼ºï¼ˆåŸºäºŽ Notepatch v0.3 ä¿®æ”¹ï¼‰",
+				L"Windows ¼ÇÊÂ±¾ÔöÇ¿¿ËÂ¡£ºÖÐÎÄºº»¯ + ¿ì½Ý¼üÔöÇ¿£¨»ùÓÚ Notepatch v0.3 ÐÞ¸Ä£©",
 				APP_NAME,
 				MB_OK | MB_ICONINFORMATION
 			);
@@ -1520,9 +1535,9 @@ void CreateMenus(void)
 	hSubMenu = GetSubMenu(g_hMenuMain, MENU_INDEX_FILE);
 	int pos = IsWindows10OrGreater() ? 5 : 4;
 	InsertMenu(hSubMenu, pos, MF_BYPOSITION | MF_SEPARATOR, NULL, NULL);
-	InsertMenu(hSubMenu, pos + 1, MF_BYPOSITION | MF_POPUP, (UINT_PTR)GetSubMenu(g_hMenuPopup, 0), L"æ¢è¡Œç¬¦");
-	InsertMenu(hSubMenu, pos + 2, MF_BYPOSITION | MF_POPUP, (UINT_PTR)GetSubMenu(g_hMenuPopup, 1), L"ç¼–ç ");
-	InsertMenu(hSubMenu, pos + 3, MF_BYPOSITION | MF_POPUP, (UINT_PTR)GetSubMenu(g_hMenuPopup, 3), L"ç¼©è¿›");
+	InsertMenu(hSubMenu, pos + 1, MF_BYPOSITION | MF_POPUP, (UINT_PTR)GetSubMenu(g_hMenuPopup, 0), L"»»ÐÐ·û");
+	InsertMenu(hSubMenu, pos + 2, MF_BYPOSITION | MF_POPUP, (UINT_PTR)GetSubMenu(g_hMenuPopup, 1), L"±àÂë");
+	InsertMenu(hSubMenu, pos + 3, MF_BYPOSITION | MF_POPUP, (UINT_PTR)GetSubMenu(g_hMenuPopup, 3), L"Ëõ½ø");
 
 	// Edit
 	hSubMenu = GetSubMenu(g_hMenuMain, MENU_INDEX_EDIT);
@@ -1532,21 +1547,21 @@ void CreateMenus(void)
 	// Format
 	hSubMenu = GetSubMenu(g_hMenuMain, MENU_INDEX_FORMAT);
 	AppendMenu(hSubMenu, MF_SEPARATOR, NULL, NULL);
-	AppendMenu(hSubMenu, MF_POPUP, (UINT_PTR)GetSubMenu(g_hMenuPopup, 4), L"ç¼©è¿›å®½åº¦");
+	AppendMenu(hSubMenu, MF_POPUP, (UINT_PTR)GetSubMenu(g_hMenuPopup, 4), L"Ëõ½ø¿í¶È");
 
 	// View
 	hSubMenu = GetSubMenu(g_hMenuMain, MENU_INDEX_VIEW);
-	AppendMenu(hSubMenu, MF_STRING, IDM_VIEW_LINENUMBERS, L"è¡Œå·\tAlt+N");
+	AppendMenu(hSubMenu, MF_STRING, IDM_VIEW_LINENUMBERS, L"ÐÐºÅ\tAlt+N");
 	AppendMenu(hSubMenu, MF_SEPARATOR, NULL, NULL);
-	AppendMenu(hSubMenu, MF_STRING, IDM_VIEW_FULLSCREEN, L"å…¨å±\tF11");
-	AppendMenu(hSubMenu, MF_STRING, IDM_VIEW_TRANSPARENT, L"åŠé€æ˜Ž\tAlt+T");
-	AppendMenu(hSubMenu, MF_STRING, IDM_VIEW_ALWAYSONTOP, L"çª—å£ç½®é¡¶\tAlt+A");
+	AppendMenu(hSubMenu, MF_STRING, IDM_VIEW_FULLSCREEN, L"È«ÆÁ\tF11");
+	AppendMenu(hSubMenu, MF_STRING, IDM_VIEW_TRANSPARENT, L"°ëÍ¸Ã÷\tAlt+T");
+	AppendMenu(hSubMenu, MF_STRING, IDM_VIEW_ALWAYSONTOP, L"´°¿ÚÖÃ¶¥\tAlt+A");
 
 	// Add "Theme" submenu only in Win 10 and later
 	if (IsWindows10OrGreater())
 	{
 		AppendMenu(hSubMenu, MF_SEPARATOR, NULL, NULL);
-		AppendMenu(hSubMenu, MF_POPUP, (UINT_PTR)GetSubMenu(g_hMenuPopup, 2), L"ä¸»é¢˜");
+		AppendMenu(hSubMenu, MF_POPUP, (UINT_PTR)GetSubMenu(g_hMenuPopup, 2), L"Ö÷Ìâ");
 		CheckMenuItem(hSubMenu, IDM_VIEW_THEME_AUTO + g_iTheme, MF_BYCOMMAND | MF_CHECKED);
 	}
 
@@ -1557,7 +1572,7 @@ void CreateMenus(void)
 	MENUITEMINFO mmi = {};
 	mmi.cbSize = sizeof(MENUITEMINFO);
 	mmi.fMask = MIIM_STRING;
-	mmi.dwTypeData = L"å…³äºŽ\tF1";
+	mmi.dwTypeData = L"¹ØÓÚ\tF1";
 	SetMenuItemInfo(hSubMenu, IDM_HELP_ABOUT, MF_BYCOMMAND, &mmi);
 
 	// Remove "Help", "Feedback" and separator, so only the "About" item is left
@@ -1695,10 +1710,10 @@ void StatusBarUpdateIndentType(int indentType)
 	switch(indentType)
 	{
 	case INDENT_TYPE_TAB:
-		SendMessage(g_hWndStatusbar, SB_SETTEXT, STATUSBAR_PART_INDENT, (LPARAM)L"åˆ¶è¡¨ä½");
+		SendMessage(g_hWndStatusbar, SB_SETTEXT, STATUSBAR_PART_INDENT, (LPARAM)L"ÖÆ±íÎ»");
 		break;
 	case INDENT_TYPE_SPACES:
-		SendMessage(g_hWndStatusbar, SB_SETTEXT, STATUSBAR_PART_INDENT, (LPARAM)L"ç©ºæ ¼");
+		SendMessage(g_hWndStatusbar, SB_SETTEXT, STATUSBAR_PART_INDENT, (LPARAM)L"¿Õ¸ñ");
 		break;
 	}
 }
@@ -1771,6 +1786,12 @@ void LoadSettings(int *X, int *Y, int *nWidth, int *nHeight, LOGFONT *lf)
 		g_bWordWrap = (BOOL)dwData;
 	if (RegQueryValueEx(hkey, L"bShowLinenumbers", NULL, NULL, (BYTE *)&dwData, &cbData) == ERROR_SUCCESS)
 		g_bShowLinenumbers = (BOOL)dwData;
+	if (RegQueryValueEx(hkey, L"bTransparentMode", NULL, NULL, (BYTE *)&dwData, &cbData) == ERROR_SUCCESS)
+		g_bTransparentMode = (BOOL)dwData;
+	if (RegQueryValueEx(hkey, L"bAlwaysOnTop", NULL, NULL, (BYTE *)&dwData, &cbData) == ERROR_SUCCESS)
+		g_bAlwaysOnTop = (BOOL)dwData;
+	if (RegQueryValueEx(hkey, L"iFontSizeZoom", NULL, NULL, (BYTE *)&dwData, &cbData) == ERROR_SUCCESS)
+		g_iFontSizeZoom = (int)dwData;
 
 	if (RegQueryValueEx(hkey, L"iWindowPosLeft", NULL, NULL, (BYTE *)&dwData, &cbData) == ERROR_SUCCESS)
 		*X = (int)dwData;
@@ -1813,6 +1834,10 @@ void SaveSettings(void)
     RegSetValueEx(hkey, L"bShowStatusbar", 0, REG_DWORD, (BYTE *)&g_bShowStatusbar, sizeof(g_bShowStatusbar));
 	RegSetValueEx(hkey, L"bWordWrap", 0, REG_DWORD, (BYTE *)&g_bWordWrap, sizeof(g_bWordWrap));
 	RegSetValueEx(hkey, L"bShowLinenumbers", 0, REG_DWORD, (BYTE *)&g_bShowLinenumbers, sizeof(g_bWordWrap));
+	RegSetValueEx(hkey, L"bTransparentMode", 0, REG_DWORD, (BYTE *)&g_bTransparentMode, sizeof(g_bTransparentMode));
+	RegSetValueEx(hkey, L"bAlwaysOnTop", 0, REG_DWORD, (BYTE *)&g_bAlwaysOnTop, sizeof(g_bAlwaysOnTop));
+	int iFontSizeZoom = g_pEdit->GetZoom();
+	RegSetValueEx(hkey, L"iFontSizeZoom", 0, REG_DWORD, (BYTE *)&iFontSizeZoom, sizeof(iFontSizeZoom));
 
     RECT rc;
 	ShowWindow(g_hWndMain, SW_RESTORE);

@@ -120,6 +120,8 @@ public:
 	int 		ZoomIn(void);
 	int 		ZoomOut(void);
 	void 		ZoomReset(void);
+	int 		GetZoom(void);
+	int 		SetZoom(int iZoom);
 
 	void 		GotoLine(UINT lineno);
 

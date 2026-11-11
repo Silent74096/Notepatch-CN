@@ -475,6 +475,31 @@ void Edit::ZoomReset(void)
 }
 
 //##########################################################
+//
+//##########################################################
+int Edit::GetZoom(void)
+{
+	return m_iFontSizeZoom;
+}
+
+//##########################################################
+// Restore a saved zoom delta, clamped to the same 10%-500%
+// range used by ZoomIn/ZoomOut.
+//##########################################################
+int Edit::SetZoom(int iZoom)
+{
+	m_iFontSizeZoom = iZoom;
+	int iMax = 4 * m_iFontSize;	// 500%
+	int iMin = -(m_iFontSize - (m_iFontSize > 10 ? m_iFontSize / 10 : m_iFontSize - 1));	// >=10% and >=1pt
+	if (m_iFontSizeZoom > iMax)
+		m_iFontSizeZoom = iMax;
+	if (m_iFontSizeZoom < iMin)
+		m_iFontSizeZoom = iMin;
+	__UpdateFont();
+	return (int)(100 * (m_iFontSize + m_iFontSizeZoom) / m_iFontSize);
+}
+
+//##########################################################
 // Handles Ctrl + mouse wheel zoom (like classic Notepad).
 // Accumulates wheel deltas so precision touchpads work correctly.
 //##########################################################
