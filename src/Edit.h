@@ -6,7 +6,7 @@
 
 #define EVENT_CARET_POS_CHANGED 10
 #define EVENT_ZOOM_CHANGED 11
-#define EDIT_MAX_TEXT_LEN 0x80000 // 512 KB (Edit control's default: 30.000)
+#define EDIT_MAX_TEXT_LEN 0x4000000 // 64 MB (Edit control's default: 30.000)
 #define MAX_INDENT_SIZE 64
 #define DEFAULT_MARGIN 4
 
