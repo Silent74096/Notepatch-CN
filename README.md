@@ -28,11 +28,15 @@
 
 ## 安装
 
-1. 在 [Releases](../../releases) 页面下载最新安装包并解压（**Windows 11 用户请下载 `-win11` 后缀的安装包**：Win11 的商店版新记事本会拦截 notepad.exe 启动，该版本的安装脚本会自动处理）
-2. 右键 `安装.bat`，选择「以管理员身份运行」
-3. 程序将复制到 `C:\Program Files\Notepatch`，并通过注册表 Image File Execution Options 重定向替换系统记事本（不修改系统文件 notepad.exe，随时可逆）
+**方式一：图形化安装程序（推荐）**
 
-卸载 / 恢复系统记事本：右键 `卸载.bat`，以管理员身份运行即可。
+下载 [Releases](../../releases) 页面的 `Notepatch-Setup-*.exe`，双击运行并按向导操作即可。安装程序会自动：复制程序到 `C:\Program Files\Notepatch`、写入注册表重定向、清理 Win11 的 UseFilter 过滤器，并在检测到商店版新记事本时询问是否卸载。卸载在「设置 → 应用」或开始菜单中进行。
+
+**方式二：脚本安装**
+
+下载 zip 安装包并解压（**Windows 11 用户请下载 `-win11` 后缀的包**），右键 `安装.bat`，选择「以管理员身份运行」。
+
+两种方式都通过注册表 Image File Execution Options 重定向替换系统记事本（不修改系统文件 notepad.exe，随时可逆）。
 
 ## 自行编译
 
