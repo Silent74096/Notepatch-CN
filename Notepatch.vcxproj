@@ -95,7 +95,7 @@
       <CallingConvention>StdCall</CallingConvention>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>advapi32.lib;comctl32.lib;comdlg32.lib;dwmapi.lib;gdi32.lib;kernel32.lib;ole32.lib;shell32.lib;shlwapi.lib;user32.lib;winspool.lib;uxtheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>advapi32.lib;comctl32.lib;comdlg32.lib;dwmapi.lib;gdi32.lib;kernel32.lib;ole32.lib;shell32.lib;shlwapi.lib;user32.lib;winspool.lib;uxtheme.lib;gdiplus.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(OutDir)Notepatch.pdb</ProgramDatabaseFile>
@@ -121,7 +121,7 @@
       <CallingConvention>StdCall</CallingConvention>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>advapi32.lib;comctl32.lib;comdlg32.lib;dwmapi.lib;gdi32.lib;kernel32.lib;ole32.lib;shell32.lib;shlwapi.lib;user32.lib;winspool.lib;uxtheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>advapi32.lib;comctl32.lib;comdlg32.lib;dwmapi.lib;gdi32.lib;kernel32.lib;ole32.lib;shell32.lib;shlwapi.lib;user32.lib;winspool.lib;uxtheme.lib;gdiplus.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(OutDir)Notepatch.pdb</ProgramDatabaseFile>
@@ -147,7 +147,7 @@
       <CallingConvention>StdCall</CallingConvention>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>advapi32.lib;comctl32.lib;comdlg32.lib;dwmapi.lib;gdi32.lib;kernel32.lib;ole32.lib;shell32.lib;shlwapi.lib;user32.lib;winspool.lib;uxtheme.lib</AdditionalDependencies>
+      <AdditionalDependencies>advapi32.lib;comctl32.lib;comdlg32.lib;dwmapi.lib;gdi32.lib;kernel32.lib;ole32.lib;shell32.lib;shlwapi.lib;user32.lib;winspool.lib;uxtheme.lib;gdiplus.lib</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
@@ -178,7 +178,7 @@
       <CallingConvention>StdCall</CallingConvention>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>advapi32.lib;comctl32.lib;comdlg32.lib;dwmapi.lib;gdi32.lib;kernel32.lib;ole32.lib;shell32.lib;shlwapi.lib;user32.lib;winspool.lib;uxtheme.lib</AdditionalDependencies>
+      <AdditionalDependencies>advapi32.lib;comctl32.lib;comdlg32.lib;dwmapi.lib;gdi32.lib;kernel32.lib;ole32.lib;shell32.lib;shlwapi.lib;user32.lib;winspool.lib;uxtheme.lib;gdiplus.lib</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
@@ -199,6 +199,7 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Background.cpp" />
     <ClCompile Include="src\Dark.cpp" />
     <ClCompile Include="src\Dialogs.cpp" />
     <ClCompile Include="src\Edit.cpp" />
@@ -206,6 +207,7 @@
     <ClCompile Include="src\Notepatch.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Background.h" />
     <ClInclude Include="src\Dark.h" />
     <ClInclude Include="src\Debug.h" />
     <ClInclude Include="src\Dialogs.h" />

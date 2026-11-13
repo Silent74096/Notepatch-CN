@@ -1,5 +1,5 @@
 #define MyAppName "Notepatch 汉化增强版"
-#define MyAppVersion "1.0.5"
+#define MyAppVersion "1.0.6"
 #define MyAppPublisher "Silent74096"
 #define MyAppURL "https://github.com/Silent74096/Notepatch-CN"
 #define MyAppExeName "Notepatch.exe"
@@ -15,7 +15,7 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\Notepatch
 DisableProgramGroupPage=yes
 OutputDir=.
-OutputBaseFilename=Notepatch-Setup-1.0.5
+OutputBaseFilename=Notepatch-Setup-1.0.6
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -24,7 +24,7 @@ ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 SetupIconFile=Notepatch.ico
 UninstallDisplayIcon={app}\Notepatch.exe
-VersionInfoVersion=1.0.5.0
+VersionInfoVersion=1.0.6.0
 MinVersion=10.0
 
 [Languages]

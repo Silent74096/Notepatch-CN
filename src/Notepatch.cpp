@@ -8,6 +8,7 @@
 #include "Helpers.h"
 #include "Notepatch.h"
 #include "Resource.h"
+#include "Background.h"
 #include "Version.h"
 
 enum Theme
@@ -507,6 +508,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, LPWSTR lpCmdLine, 
 	icex.dwICC	= ICC_WIN95_CLASSES|ICC_COOL_CLASSES|ICC_BAR_CLASSES|ICC_USEREX_CLASSES;
 	InitCommonControlsEx(&icex);
 
+	// GDI+ for background image support
+	BackgroundInit();
+
 	if (g_bIsDark)
 		DarkMenus(TRUE);
 
@@ -527,7 +531,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, LPWSTR lpCmdLine, 
 	}
 
 	g_hWndMain = CreateWindowEx(
-		0,
+		WS_EX_COMPOSITED,
 		APP_CLASS,
 		APP_NAME,
 		WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
@@ -579,6 +583,17 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, LPWSTR lpCmdLine, 
 		SetWindowPos(g_hWndMain, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE|SWP_NOSIZE);
 		CheckMenuItem(g_hMenuMain, IDM_VIEW_ALWAYSONTOP, MF_BYCOMMAND | MF_CHECKED);
 	}
+
+	// Restore custom background (image and/or colors) from saved settings
+	if (g_bBgImageEnabled)
+	{
+		if (!BackgroundLoadImage(g_wszBgImagePath))
+			g_bBgImageEnabled = FALSE;
+		BackgroundRebuild();
+	}
+
+	// Detect editor scrolling to keep a fixed background image aligned
+	SetTimer(g_hWndMain, BG_SCROLL_TIMER_ID, 5, NULL);
 
 	ShowWindow(g_hWndMain, SW_SHOWNORMAL);
 
@@ -665,7 +680,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, LPWSTR lpCmdLine, 
 		}
 	}
 
+	KillTimer(g_hWndMain, BG_SCROLL_TIMER_ID);
+
 	DestroyMenu(g_hMenuPopup);
+
+	BackgroundShutdown();
 
 	UnregisterClass(APP_CLASS, hInstance);
 
@@ -701,6 +720,12 @@ LRESULT CALLBACK MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_SIZE:
 			OnSize(hWnd, wParam, lParam);
+			BackgroundRebuild();
+			break;
+
+		case WM_TIMER:
+			if (wParam == BG_SCROLL_TIMER_ID)
+				BackgroundCheckScroll();
 			break;
 
 		case WM_DESTROY:
@@ -717,16 +742,33 @@ LRESULT CALLBACK MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 
 		case WM_CTLCOLOREDIT:
-	        if (g_bIsDark && (HWND)lParam == g_pEdit->m_hWnd)
-	        {
-	            SetTextColor((HDC)wParam, DARK_EDITOR_TEXT_COLOR);
-	            SetBkColor((HDC)wParam, DARK_EDITOR_BG_COLOR);
-	            SetDCBrushColor((HDC)wParam, DARK_EDITOR_BG_COLOR);
-	            return (LRESULT)GetStockObject(DC_BRUSH);
-	        }
-	        else
-	        	return DefWindowProc(hWnd, uMsg, wParam, lParam);
-			break;
+			if ((HWND)lParam == g_pEdit->m_hWnd)
+			{
+				// Custom background image: pattern brush + transparent text background
+				HBRUSH hbrBg = BackgroundGetBrush();
+				if (hbrBg)
+				{
+					SetTextColor((HDC)wParam, BackgroundGetEffectiveTextColor());
+					SetBkMode((HDC)wParam, TRANSPARENT);
+					return (LRESULT)hbrBg;
+				}
+				// Custom solid colors (e.g. extracted from the background image)
+				if (g_bCustomBgColor)
+				{
+					SetTextColor((HDC)wParam, BackgroundGetEffectiveTextColor());
+					SetBkColor((HDC)wParam, BackgroundGetEffectiveBgColor());
+					SetDCBrushColor((HDC)wParam, BackgroundGetEffectiveBgColor());
+					return (LRESULT)GetStockObject(DC_BRUSH);
+				}
+				if (g_bIsDark)
+				{
+					SetTextColor((HDC)wParam, DARK_EDITOR_TEXT_COLOR);
+					SetBkColor((HDC)wParam, DARK_EDITOR_BG_COLOR);
+					SetDCBrushColor((HDC)wParam, DARK_EDITOR_BG_COLOR);
+					return (LRESULT)GetStockObject(DC_BRUSH);
+				}
+			}
+			return DefWindowProc(hWnd, uMsg, wParam, lParam);
 
 		case WM_DROPFILES:
 			{
@@ -1296,6 +1338,26 @@ LRESULT OnCommand(HWND hwnd, WPARAM wParam, LPARAM lParam)
 			CheckMenuItem(g_hMenuMain, IDM_VIEW_ALWAYSONTOP, MF_BYCOMMAND | (g_bAlwaysOnTop ? MF_CHECKED : MF_UNCHECKED));
 			break;
 
+		case IDM_VIEW_BG_CHOOSE:
+			BackgroundChooseFile(hwnd);
+			break;
+
+		case IDM_VIEW_BG_OPACITY:
+			if (g_bBgImageEnabled)
+				BackgroundShowOpacityDialog(hwnd);
+			else
+				MessageBox(hwnd, L"请先在“查看 → 背景”菜单中选择一张背景图片。", L"背景不透明度", MB_ICONINFORMATION | MB_OK);
+			break;
+
+		case IDM_VIEW_BG_EXTRACT:
+			if (!BackgroundExtractColors())
+				MessageBox(hwnd, L"请先在“查看 → 背景”菜单中选择一张背景图片。", L"提取窗口颜色", MB_ICONINFORMATION | MB_OK);
+			break;
+
+		case IDM_VIEW_BG_CLEAR:
+			BackgroundClear();
+			break;
+
 		case IDM_VIEW_THEME_AUTO:
 		case IDM_VIEW_THEME_DARK:
 		case IDM_VIEW_THEME_LIGHT:
@@ -1572,6 +1634,18 @@ void CreateMenus(void)
 		CheckMenuItem(hSubMenu, IDM_VIEW_THEME_AUTO + g_iTheme, MF_BYCOMMAND | MF_CHECKED);
 	}
 
+	// Background submenu (image, opacity, color extraction)
+	{
+		HMENU hBgMenu = CreatePopupMenu();
+		AppendMenu(hBgMenu, MF_STRING, IDM_VIEW_BG_CHOOSE, L"选择背景图片(&C)...");
+		AppendMenu(hBgMenu, MF_STRING, IDM_VIEW_BG_OPACITY, L"背景不透明度(&O)...");
+		AppendMenu(hBgMenu, MF_STRING, IDM_VIEW_BG_EXTRACT, L"从背景提取窗口颜色(&E)");
+		AppendMenu(hBgMenu, MF_SEPARATOR, NULL, NULL);
+		AppendMenu(hBgMenu, MF_STRING, IDM_VIEW_BG_CLEAR, L"清除背景图片(&D)");
+		AppendMenu(hSubMenu, MF_SEPARATOR, NULL, NULL);
+		AppendMenu(hSubMenu, MF_POPUP, (UINT_PTR)hBgMenu, L"背景(&B)");
+	}
+
 	// Help
 	hSubMenu = GetSubMenu(g_hMenuMain, MENU_INDEX_HELP);
 
@@ -1824,6 +1898,29 @@ void LoadSettings(int *X, int *Y, int *nWidth, int *nHeight, LOGFONT *lf)
 	if (RegQueryValueEx(hkey, L"lfCharSet", NULL, NULL, (BYTE *)&dwData, &cbData) == ERROR_SUCCESS)
 		lf->lfCharSet = (BYTE)dwData;
 
+	// Background image / custom colors
+	cbData = sizeof(DWORD);
+	if (RegQueryValueEx(hkey, L"bBgImageEnabled", NULL, NULL, (BYTE *)&dwData, &cbData) == ERROR_SUCCESS)
+		g_bBgImageEnabled = (BOOL)dwData;
+	cbData = sizeof(DWORD);
+	if (RegQueryValueEx(hkey, L"iBgOpacity", NULL, NULL, (BYTE *)&dwData, &cbData) == ERROR_SUCCESS)
+		g_iBgOpacity = (int)dwData;
+	cbData = sizeof(g_wszBgImagePath);
+	if (RegQueryValueEx(hkey, L"wszBgImagePath", NULL, NULL, (BYTE *)g_wszBgImagePath, &cbData) != ERROR_SUCCESS)
+		g_wszBgImagePath[0] = 0;
+	cbData = sizeof(DWORD);
+	if (RegQueryValueEx(hkey, L"bCustomBgColor", NULL, NULL, (BYTE *)&dwData, &cbData) == ERROR_SUCCESS)
+		g_bCustomBgColor = (BOOL)dwData;
+	cbData = sizeof(DWORD);
+	if (RegQueryValueEx(hkey, L"crEditorBg", NULL, NULL, (BYTE *)&dwData, &cbData) == ERROR_SUCCESS)
+		g_crEditorBg = (COLORREF)dwData;
+	cbData = sizeof(DWORD);
+	if (RegQueryValueEx(hkey, L"bCustomTextColor", NULL, NULL, (BYTE *)&dwData, &cbData) == ERROR_SUCCESS)
+		g_bCustomTextColor = (BOOL)dwData;
+	cbData = sizeof(DWORD);
+	if (RegQueryValueEx(hkey, L"crEditorText", NULL, NULL, (BYTE *)&dwData, &cbData) == ERROR_SUCCESS)
+		g_crEditorText = (COLORREF)dwData;
+
     RegCloseKey(hkey);
 }
 
@@ -1861,6 +1958,17 @@ void SaveSettings(void)
 	RegSetValueEx(hkey, L"lfHeight", 0, REG_DWORD, (BYTE *)&lf.lfHeight, sizeof(LONG));
 	RegSetValueEx(hkey, L"lfItalic", 0, REG_DWORD, (BYTE *)&lf.lfItalic, sizeof(LONG));
 	RegSetValueEx(hkey, L"lfCharSet", 0, REG_DWORD, (BYTE *)&lf.lfCharSet, sizeof(LONG));
+
+	// Background image / custom colors
+	RegSetValueEx(hkey, L"bBgImageEnabled", 0, REG_DWORD, (BYTE *)&g_bBgImageEnabled, sizeof(g_bBgImageEnabled));
+	RegSetValueEx(hkey, L"iBgOpacity", 0, REG_DWORD, (BYTE *)&g_iBgOpacity, sizeof(g_iBgOpacity));
+	RegSetValueEx(hkey, L"wszBgImagePath", 0, REG_SZ, (BYTE *)g_wszBgImagePath, (DWORD)((wcslen(g_wszBgImagePath) + 1) * sizeof(wchar_t)));
+	RegSetValueEx(hkey, L"bCustomBgColor", 0, REG_DWORD, (BYTE *)&g_bCustomBgColor, sizeof(g_bCustomBgColor));
+	DWORD dwColor = (DWORD)g_crEditorBg;
+	RegSetValueEx(hkey, L"crEditorBg", 0, REG_DWORD, (BYTE *)&dwColor, sizeof(dwColor));
+	RegSetValueEx(hkey, L"bCustomTextColor", 0, REG_DWORD, (BYTE *)&g_bCustomTextColor, sizeof(g_bCustomTextColor));
+	dwColor = (DWORD)g_crEditorText;
+	RegSetValueEx(hkey, L"crEditorText", 0, REG_DWORD, (BYTE *)&dwColor, sizeof(dwColor));
 
     RegCloseKey(hkey);
 }

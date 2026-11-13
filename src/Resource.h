@@ -78,6 +78,11 @@
 
 #define IDM_VIEW_LINENUMBERS			69
 
+#define IDM_VIEW_BG_CHOOSE			70
+#define IDM_VIEW_BG_OPACITY			71
+#define IDM_VIEW_BG_EXTRACT			72
+#define IDM_VIEW_BG_CLEAR			73
+
 #define IDM_HELP_HELP                  	64
 #define IDM_HELP_FEEDBACK            	66
 #define IDM_HELP_ABOUT                  65
